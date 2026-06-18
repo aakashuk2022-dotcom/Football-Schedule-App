@@ -1,0 +1,13 @@
+{
+  "name": "Matchday — World Cup 2026",
+  "short_name": "Matchday",
+  "description": "Daily FIFA World Cup 2026 schedule with kickoff reminders",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0B1E14",
+  "theme_color": "#0B1E14",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
