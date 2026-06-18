@@ -239,6 +239,26 @@
   }
   @keyframes pulse{ 0%,100%{opacity:1} 50%{opacity:0.4} }
 
+  .match-score.live{
+    color: var(--red-live);
+  }
+  .minute-tag{
+    font-size: 10px;
+    color: var(--red-live);
+    display:block;
+    margin-top: 2px;
+    text-align: right;
+  }
+
+  .sync-status{
+    font-size: 10px;
+    color: var(--text-soft);
+    text-align: center;
+    padding: 8px 0 2px;
+    letter-spacing: 0.5px;
+  }
+  .sync-status.err{ color: var(--amber); }
+
   /* ---------- Today banner ---------- */
   .today-banner{
     background: linear-gradient(135deg, #18351F, #0F2417);
@@ -375,6 +395,7 @@
     <div class="clock" id="liveClock">—</div>
   </div>
   <div class="day-strip" id="dayStrip"></div>
+  <div class="sync-status" id="syncStatus">Loading live scores…</div>
 </header>
 
 <main id="boardView">
@@ -453,8 +474,7 @@
   function dayKey(iso){
     const d = new Date(iso);
     return d.toLocaleDateString('en-CA'); // YYYY-MM-DD in local tz
-  }
-  function fmtTime(iso){
+  }  function fmtTime(iso){
     const d = new Date(iso);
     return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   }
@@ -479,6 +499,70 @@
   const todayKey = new Date().toLocaleDateString('en-CA');
   let activeDay = byDay[todayKey] ? todayKey : (dayKeys.find(k => k >= todayKey) || dayKeys[0]);
 
+  // ---------- Live score layer ----------
+  // Live data is fetched from our own Netlify Function (keeps the API key private)
+  // and merged onto the static MATCHES list by matching date + team names.
+  const SCORES_ENDPOINT = '/.netlify/functions/scores';
+  let liveById = {}; // MATCHES.id -> { status, minute, homeScore, awayScore }
+  let lastSync = null;
+
+  function normTeam(name){
+    if(!name) return '';
+    return name.toLowerCase()
+      .replace(/republic of korea|korea republic/, 'south korea')
+      .replace(/czechia/, 'czech republic')
+      .replace(/ivory coast|côte d.ivoire/, 'ivory coast')
+      .replace(/dr congo|congo dr/, 'dr congo')
+      .replace(/usa|united states/, 'usa')
+      .replace(/[^a-z]/g, '');
+  }
+
+  function teamsMatch(localTeams, apiHome, apiAway){
+    // localTeams like "England vs Croatia"
+    const parts = localTeams.split(' vs ').map(normTeam);
+    if(parts.length !== 2) return false;
+    const h = normTeam(apiHome), a = normTeam(apiAway);
+    return (parts[0].includes(h) || h.includes(parts[0])) && (parts[1].includes(a) || a.includes(parts[1]))
+        || (parts[0].includes(a) || a.includes(parts[0])) && (parts[1].includes(h) || h.includes(parts[1]));
+  }
+
+  function mergeLiveData(apiMatches){
+    liveById = {};
+    apiMatches.forEach(am => {
+      const apiDay = dayKey(am.utcDate);
+      const candidate = MATCHES.find(m => dayKey(m.kickoff) === apiDay && teamsMatch(m.teams, am.homeTeam, am.awayTeam));
+      if(candidate){
+        liveById[candidate.id] = {
+          status: am.status,
+          minute: am.minute,
+          homeScore: am.homeScore,
+          awayScore: am.awayScore,
+        };
+      }
+    });
+  }
+
+  async function syncLiveScores(){
+    const statusEl = document.getElementById('syncStatus');
+    try{
+      const res = await fetch(SCORES_ENDPOINT, { cache: 'no-store' });
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if(data.error) throw new Error(data.error);
+      mergeLiveData(data.matches || []);
+      lastSync = new Date();
+      statusEl.classList.remove('err');
+      statusEl.textContent = 'Live scores synced · ' + lastSync.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+      renderBoard();
+    } catch(err){
+      statusEl.classList.add('err');
+      statusEl.textContent = lastSync
+        ? 'Live sync failed — showing last update from ' + lastSync.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })
+        : 'Live scores unavailable right now — showing schedule only';
+    }
+  }
+
+
   // ---------- Render day strip ----------
   function renderDayStrip(){
     const strip = $('dayStrip');
@@ -500,6 +584,13 @@
 
   // ---------- Render board ----------
   function matchStatus(m){
+    const live = liveById[m.id];
+    if(live){
+      if(live.status === 'IN_PLAY' || live.status === 'PAUSED') return 'live';
+      if(live.status === 'FINISHED' || live.status === 'AWARDED') return 'finished';
+      if(live.status === 'POSTPONED' || live.status === 'SUSPENDED' || live.status === 'CANCELLED') return 'upcoming';
+      // SCHEDULED / TIMED fall through to time-based check below
+    }
     const start = new Date(m.kickoff).getTime();
     const now = Date.now();
     const ninety = 105 * 60 * 1000; // assume ~105 min match window
@@ -556,6 +647,17 @@
       const status = matchStatus(m);
       const isBelled = !!bells[m.id];
       const canBell = status === 'upcoming';
+      const live = liveById[m.id];
+
+      let scoreDisplay = '';
+      if(live && (live.homeScore !== null && live.homeScore !== undefined)){
+        scoreDisplay = `${live.homeScore}-${live.awayScore}`;
+      } else if(m.score){
+        scoreDisplay = m.score;
+      }
+
+      const minuteDisplay = (status === 'live' && live && live.minute) ? `${live.minute}'` : '';
+
       html += `<div class="match-row ${status}">
         <div class="match-main">
           <div class="match-time ${status === 'live' ? 'live' : (status === 'finished' ? 'past' : '')}">${fmtTime(m.kickoff)}</div>
@@ -564,7 +666,7 @@
             <div class="match-teams">${m.teams}</div>
             <div class="match-venue">${m.venue}</div>
           </div>
-          ${m.score ? `<div class="match-score">${m.score}</div>` : ''}
+          ${scoreDisplay ? `<div><div class="match-score ${status === 'live' ? 'live' : ''}">${scoreDisplay}</div>${minuteDisplay ? `<span class="minute-tag">${minuteDisplay}</span>` : ''}</div>` : ''}
           <div class="bell-btn ${isBelled ? 'active' : ''} ${canBell ? '' : 'disabled'}" data-id="${m.id}">
             ${bellSvg(isBelled)}
           </div>
@@ -729,6 +831,8 @@
   renderDayStrip();
   renderBoard();
   rescheduleAllBells();
+  syncLiveScores();
+  setInterval(syncLiveScores, 60000); // refresh live scores every 60s
 })();
 </script>
 </body>
