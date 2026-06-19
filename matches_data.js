@@ -1,5 +1,31 @@
 // FIFA World Cup 2026 — full schedule, UK kick-off times (BST, UTC+1, in effect for the whole tournament)
 // Times sourced from Sky Sports' day-by-day breakdown. ISO strings are in UK local time with +01:00 offset.
+
+// Maps team display names to ISO 3166-1 alpha-2 codes for flagcdn.com
+const FLAG_CODES = {
+  "Mexico": "mx", "South Africa": "za", "South Korea": "kr", "Czech Republic": "cz",
+  "Canada": "ca", "Bosnia-Herzegovina": "ba", "USA": "us", "Paraguay": "py",
+  "Qatar": "qa", "Switzerland": "ch", "Brazil": "br", "Morocco": "ma",
+  "Haiti": "ht", "Scotland": "gb-sct", "Australia": "au", "Turkey": "tr",
+  "Germany": "de", "Curacao": "cw", "Netherlands": "nl", "Japan": "jp",
+  "Ivory Coast": "ci", "Ecuador": "ec", "Sweden": "se", "Tunisia": "tn",
+  "Spain": "es", "Cape Verde": "cv", "Belgium": "be", "Egypt": "eg",
+  "Saudi Arabia": "sa", "Uruguay": "uy", "Iran": "ir", "New Zealand": "nz",
+  "France": "fr", "Senegal": "sn", "Iraq": "iq", "Norway": "no",
+  "Argentina": "ar", "Algeria": "dz", "Austria": "at", "Jordan": "jo",
+  "Portugal": "pt", "DR Congo": "cd", "England": "gb-eng", "Croatia": "hr",
+  "Ghana": "gh", "Panama": "pa", "Uzbekistan": "uz", "Colombia": "co",
+};
+
+function flagUrl(teamName, size){
+  if(!teamName) return null;
+  // Strip "Match N: " prefixes and placeholder text for knockout games
+  const clean = teamName.trim();
+  const code = FLAG_CODES[clean];
+  if(!code) return null;
+  return `https://flagcdn.com/${size || 'w80'}/${code}.png`;
+}
+
 const MATCHES = [
   // ---- Thursday 11 June ----
   { id: 1, stage: "Group A", teams: "Mexico vs South Africa", venue: "Mexico City, Mexico", kickoff: "2026-06-11T20:00:00+01:00", score: "2-0", status: "FT" },

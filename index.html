@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Matchday — World Cup 2026</title>
-<meta name="theme-color" content="#0B1E14">
+<meta name="theme-color" content="#0A0A0B">
 <link rel="manifest" href="manifest.json">
 <style>
   @font-face {
@@ -13,29 +13,51 @@
   }
 
   :root{
-    --bg: #0B1E14;
-    --bg-2: #0F2A1C;
-    --board: #102818;
-    --board-edge: #1B3D27;
-    --flap: #E8E2D0;
-    --flap-dim: #C9C2AE;
-    --amber: #F2A93B;
-    --amber-dim: #8A6420;
-    --red-live: #E2473A;
-    --green-go: #4FAE6E;
-    --text-soft: #9FB3A6;
-    --hairline: rgba(232,226,208,0.12);
+    --bg: #0A0A0B;
+    --bg-2: #16151A;
+    --board: #18171C;
+    --board-edge: #2A2730;
+    --gold: #C9A24B;
+    --gold-bright: #E8C470;
+    --gold-dim: #6B5526;
+    --ink: #F2EFE9;
+    --ink-dim: #C7C2B8;
+    --red-live: #D33B30;
+    --green-go: #3FA86B;
+    --text-soft: #8B8790;
+    --hairline: rgba(242,239,233,0.08);
   }
 
   *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
   html,body{
     margin:0; padding:0;
-    background: radial-gradient(120% 140% at 50% -10%, var(--bg-2), var(--bg) 60%);
-    color: var(--flap);
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(120% 90% at 50% -10%, var(--bg-2), var(--bg) 55%),
+      repeating-linear-gradient(180deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
+    color: var(--ink);
     font-family: 'Courier New', ui-monospace, 'SF Mono', monospace;
     min-height: 100vh;
+    position: relative;
   }
+
+  /* Giant ghosted "26" watermark — references the tournament year, not the official mark */
+  body::before{
+    content: '26';
+    position: fixed;
+    top: -4vw; right: -4vw;
+    font-family: Georgia, serif;
+    font-weight: 900;
+    font-size: 52vw;
+    line-height: 1;
+    color: rgba(201,162,75,0.025);
+    z-index: 0;
+    pointer-events: none;
+    letter-spacing: -0.04em;
+  }
+
+  header, main, .bottom-nav, .settings-panel{ position: relative; z-index: 1; }
 
   body{
     padding-bottom: 90px;
@@ -59,10 +81,10 @@
     letter-spacing: 0.5px;
     font-size: 22px;
     margin:0;
-    color: var(--flap);
+    color: var(--ink);
   }
   .brand h1 span{
-    color: var(--amber);
+    color: var(--gold);
     font-style: italic;
   }
   .brand .clock{
@@ -93,11 +115,11 @@
     white-space: nowrap;
     transition: all 0.15s ease;
   }
-  .day-pill.has-match{ color: var(--flap); }
+  .day-pill.has-match{ color: var(--ink); }
   .day-pill.active{
-    background: var(--amber);
+    background: var(--gold);
     color: #1A1206;
-    border-color: var(--amber);
+    border-color: var(--gold);
     font-weight: 700;
   }
   .day-pill .dot{
@@ -118,7 +140,7 @@
     font-size: 17px;
     margin:0;
     font-weight: 700;
-    color: var(--flap);
+    color: var(--ink);
   }
   .board-date .count{
     font-size: 11px; color: var(--text-soft); letter-spacing: 1px;
@@ -135,13 +157,13 @@
     font-family: Georgia, serif;
     font-style: italic;
     font-size: 18px;
-    color: var(--flap-dim);
+    color: var(--ink-dim);
     display:block;
     margin-bottom: 8px;
   }
 
   .match-row{
-    background: linear-gradient(180deg, var(--board), #0C2014);
+    background: linear-gradient(180deg, var(--board), #121116);
     border: 1px solid var(--board-edge);
     border-radius: 4px;
     margin-bottom: 10px;
@@ -151,7 +173,7 @@
   .match-row::before{
     content:'';
     position:absolute; left:0; top:0; bottom:0; width:3px;
-    background: var(--amber-dim);
+    background: var(--gold-dim);
   }
   .match-row.live::before{ background: var(--red-live); }
   .match-row.finished::before{ background: var(--text-soft); opacity:0.4; }
@@ -166,7 +188,7 @@
     font-size: 22px;
     font-weight: 700;
     letter-spacing: 1px;
-    color: var(--flap);
+    color: var(--ink);
     min-width: 64px;
     font-variant-numeric: tabular-nums;
   }
@@ -178,29 +200,57 @@
     font-size: 9px;
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    color: var(--amber);
-    margin-bottom: 4px;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+
+  .teams-row{
+    display:flex; align-items:center; gap: 7px;
+    flex-wrap: wrap;
+  }
+  .flag-img{
+    width: 22px; height: 16px;
+    object-fit: cover;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgba(242,239,233,0.15);
+    flex-shrink: 0;
+    background: var(--board-edge);
+  }
+  .flag-placeholder{
+    width: 22px; height: 16px;
+    border-radius: 2px;
+    background: var(--board-edge);
+    box-shadow: 0 0 0 1px rgba(242,239,233,0.1);
+    flex-shrink: 0;
   }
   .match-teams{
-    font-size: 14px;
-    color: var(--flap);
+    font-size: 13.5px;
+    color: var(--ink);
     font-weight: 700;
-    letter-spacing: 0.3px;
-    white-space: nowrap;
+    letter-spacing: 0.2px;
+    max-width: 38vw;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .vs-sep{
+    color: var(--gold);
+    font-size: 10px;
+    font-weight: 400;
+    opacity: 0.7;
+    flex-shrink: 0;
   }
   .match-venue{
     font-size: 10.5px;
     color: var(--text-soft);
-    margin-top: 3px;
+    margin-top: 5px;
     letter-spacing: 0.5px;
   }
 
   .match-score{
     font-size: 16px;
     font-weight: 700;
-    color: var(--flap-dim);
+    color: var(--ink-dim);
     letter-spacing: 1px;
     min-width: 40px;
     text-align: right;
@@ -219,8 +269,8 @@
   }
   .bell-btn svg{ width:17px; height:17px; }
   .bell-btn.active{
-    background: var(--amber);
-    border-color: var(--amber);
+    background: var(--gold);
+    border-color: var(--gold);
     color: #1A1206;
   }
   .bell-btn:active{ transform: scale(0.92); }
@@ -257,7 +307,7 @@
     padding: 8px 0 2px;
     letter-spacing: 0.5px;
   }
-  .sync-status.err{ color: var(--amber); }
+  .sync-status.err{ color: var(--gold); }
 
   /* ---------- Today banner ---------- */
   .today-banner{
@@ -267,7 +317,7 @@
     padding: 12px 16px;
     margin: 0 0 16px;
     font-size: 12px;
-    color: var(--flap-dim);
+    color: var(--ink-dim);
     display:flex; align-items:center; gap:10px;
   }
   .today-banner svg{ width:18px; height:18px; flex-shrink:0; color: var(--green-go); }
@@ -292,7 +342,7 @@
     padding: 6px 0;
     cursor:pointer;
   }
-  .nav-btn.active{ color: var(--amber); }
+  .nav-btn.active{ color: var(--gold); }
   .nav-btn .ic{ display:block; margin: 0 auto 4px; width:20px; height:20px; }
 
   /* ---------- Settings panel ---------- */
@@ -314,7 +364,7 @@
     display:flex; align-items:center; justify-content:space-between;
     gap: 12px;
   }
-  .setting-row .label{ font-size:13px; color: var(--flap); }
+  .setting-row .label{ font-size:13px; color: var(--ink); }
   .setting-row .sub{ font-size:11px; color: var(--text-soft); margin-top:3px; }
 
   .toggle{
@@ -326,10 +376,10 @@
     flex-shrink:0;
     border: 1px solid var(--hairline);
   }
-  .toggle.on{ background: var(--amber); }
+  .toggle.on{ background: var(--gold); }
   .toggle .knob{
     width: 18px; height:18px; border-radius:50%;
-    background: var(--flap);
+    background: var(--ink);
     position:absolute; top:2px; left:2px;
     transition: left 0.15s ease;
   }
@@ -337,7 +387,7 @@
 
   select{
     background: var(--bg-2);
-    color: var(--flap);
+    color: var(--ink);
     border: 1px solid var(--hairline);
     border-radius: 3px;
     padding: 6px 8px;
@@ -347,16 +397,16 @@
 
   .perm-banner{
     background: rgba(242,169,59,0.1);
-    border: 1px solid var(--amber-dim);
+    border: 1px solid var(--gold-dim);
     border-radius: 4px;
     padding: 12px 14px;
     font-size: 12px;
-    color: var(--flap-dim);
+    color: var(--ink-dim);
     margin-bottom: 14px;
     line-height: 1.6;
   }
   .perm-banner button{
-    background: var(--amber);
+    background: var(--gold);
     color: #1A1206;
     border:none;
     border-radius: 3px;
@@ -373,7 +423,7 @@
     position: fixed;
     bottom: 90px; left: 50%;
     transform: translateX(-50%) translateY(20px);
-    background: var(--amber);
+    background: var(--gold);
     color: #1A1206;
     padding: 10px 18px;
     border-radius: 4px;
@@ -624,6 +674,27 @@
     return `<svg viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>`;
   }
 
+  function renderTeamsRow(teamsStr){
+    // Splits "England vs Croatia" into flag+name pairs. Falls back gracefully
+    // for knockout placeholders like "Match 73: Group A R-up vs Group B R-up".
+    const parts = teamsStr.split(' vs ');
+    if(parts.length !== 2){
+      return `<div class="match-teams">${teamsStr}</div>`;
+    }
+    const [home, away] = parts;
+    const homeUrl = flagUrl(home);
+    const awayUrl = flagUrl(away);
+    const homeFlag = homeUrl ? `<img class="flag-img" src="${homeUrl}" alt="" loading="lazy">` : `<span class="flag-placeholder"></span>`;
+    const awayFlag = awayUrl ? `<img class="flag-img" src="${awayUrl}" alt="" loading="lazy">` : `<span class="flag-placeholder"></span>`;
+    return `<div class="teams-row">
+      ${homeFlag}
+      <span class="match-teams">${home}</span>
+      <span class="vs-sep">v</span>
+      ${awayFlag}
+      <span class="match-teams">${away}</span>
+    </div>`;
+  }
+
   function renderBoard(){
     renderTodayBanner();
     const content = $('boardContent');
@@ -663,7 +734,7 @@
           <div class="match-time ${status === 'live' ? 'live' : (status === 'finished' ? 'past' : '')}">${fmtTime(m.kickoff)}</div>
           <div class="match-info">
             <div class="match-stage">${m.stage}${status === 'live' ? '<span class="live-tag">LIVE</span>' : ''}</div>
-            <div class="match-teams">${m.teams}</div>
+            ${renderTeamsRow(m.teams)}
             <div class="match-venue">${m.venue}</div>
           </div>
           ${scoreDisplay ? `<div><div class="match-score ${status === 'live' ? 'live' : ''}">${scoreDisplay}</div>${minuteDisplay ? `<span class="minute-tag">${minuteDisplay}</span>` : ''}</div>` : ''}
