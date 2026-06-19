@@ -638,7 +638,6 @@
   const SETTINGS_KEY = 'matchday_settings_v1';
   let bells = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
   let settings = Object.assign({ master: true, leadTime: 30, digest: false }, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'));
-  let timers = {}; // matchId -> timeout id (in-session fallback)
 
   function saveBells(){ localStorage.setItem(STORE_KEY, JSON.stringify(bells)); }
   function saveSettings(){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
@@ -1059,26 +1058,69 @@
     return res === 'granted';
   }
 
-  function scheduleNotification(match){
-    const leadMs = (settings.leadTime || 30) * 60 * 1000;
-    const fireAt = new Date(match.kickoff).getTime() - leadMs;
-    const delay = fireAt - Date.now();
-    if(timers[match.id]) clearTimeout(timers[match.id]);
-    if(delay <= 0) return; // too late to schedule in-session
-    timers[match.id] = setTimeout(() => {
-      fireNotification(
-        '⚽ Kicking off soon',
-        `${match.teams} — ${settings.leadTime} min to kickoff (${fmtTime(match.kickoff)})`
-      );
-    }, delay);
+  // VAPID public key — safe to expose client-side, this is how Web Push auth works
+  const VAPID_PUBLIC_KEY = 'BFEQsPIREikctNUONgZntzOG2PIfUhFZRZ1TTWzRByWDm2HtOF0JfsUKrpy59Hxwf1QRi1FcwsvEk4U0m_GOKjk';
+
+  function urlBase64ToUint8Array(base64String){
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
   }
 
-  function fireNotification(title, body){
-    if(notifPermission() !== 'granted') return;
-    if('serviceWorker' in navigator && navigator.serviceWorker.controller){
-      navigator.serviceWorker.ready.then(reg => reg.showNotification(title, { body, icon: 'icon.png', vibrate: [200,100,200] }));
-    } else {
-      new Notification(title, { body });
+  async function getPushSubscription(){
+    if(!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub){
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+    return sub;
+  }
+
+  async function scheduleNotification(match){
+    const leadMs = (settings.leadTime || 30) * 60 * 1000;
+    const fireAt = new Date(match.kickoff).getTime() - leadMs;
+    if(fireAt <= Date.now()) return false; // too late to schedule
+
+    try{
+      const sub = await getPushSubscription();
+      if(!sub) { showToast('Push notifications not supported on this browser'); return false; }
+
+      const res = await fetch('/.netlify/functions/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          matchId: match.id,
+          fireAt: new Date(fireAt).toISOString(),
+          subscription: sub.toJSON(),
+          title: '⚽ Kicking off soon',
+          body: `${match.teams} — ${settings.leadTime} min to kickoff (${fmtTime(match.kickoff)})`,
+        }),
+      });
+      if(!res.ok) throw new Error('Server rejected reminder: ' + res.status);
+      return true;
+    } catch(err){
+      console.error('Failed to schedule push reminder', err);
+      showToast('Could not set reminder — check your connection');
+      return false;
+    }
+  }
+
+  async function cancelNotification(matchId){
+    try{
+      const sub = await getPushSubscription();
+      if(!sub) return;
+      await fetch('/.netlify/functions/subscribe', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchId, subscription: sub.toJSON() }),
+      });
+    } catch(err){
+      console.error('Failed to cancel push reminder', err);
     }
   }
 
@@ -1088,10 +1130,10 @@
 
     if(bells[id]){
       delete bells[id];
-      if(timers[id]) { clearTimeout(timers[id]); delete timers[id]; }
       saveBells();
       renderBoard();
       showToast('Reminder removed');
+      cancelNotification(id); // fire-and-forget cleanup on the server
       return;
     }
 
@@ -1103,14 +1145,19 @@
       }
     }
 
-    bells[id] = true;
-    saveBells();
-    scheduleNotification(match);
+    showToast('Setting reminder…');
+    const success = await scheduleNotification(match);
+    if(success){
+      bells[id] = true;
+      saveBells();
+      showToast(`Reminder set — ${settings.leadTime} min before kickoff`);
+    }
     renderBoard();
-    showToast(`Reminder set — ${settings.leadTime} min before kickoff`);
   }
 
   function rescheduleAllBells(){
+    // Re-sync any starred matches with the server in case lead time changed
+    // or this is a fresh page load on a new device.
     Object.keys(bells).forEach(id => {
       const match = MATCHES.find(m => String(m.id) === String(id));
       if(match && matchStatus(match) === 'upcoming') scheduleNotification(match);
