@@ -245,6 +245,36 @@
     color: var(--text-soft);
     margin-top: 5px;
     letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .broadcaster-badge{
+    display: inline-flex;
+    align-items: center;
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+  .broadcaster-badge.bbc{
+    background: rgba(242,239,233,0.12);
+    color: var(--ink-dim);
+    border: 1px solid rgba(242,239,233,0.25);
+  }
+  .broadcaster-badge.itv{
+    background: rgba(201,162,75,0.15);
+    color: var(--gold-bright);
+    border: 1px solid rgba(201,162,75,0.35);
+  }
+  .broadcaster-badge.tbc{
+    background: transparent;
+    color: var(--text-soft);
+    border: 1px dashed var(--hairline);
   }
 
   .match-score{
@@ -1018,6 +1048,10 @@
       }
 
       const minuteDisplay = (status === 'live' && live && live.minute) ? `${live.minute}'` : '';
+      const bc = broadcasterFor(m.id);
+      const bcBadge = bc.short !== 'TBC'
+        ? `<span class="broadcaster-badge ${bc.short.toLowerCase()}">${bc.short}</span>`
+        : `<span class="broadcaster-badge tbc">TBC</span>`;
 
       html += `<div class="match-row ${status}">
         <div class="match-main">
@@ -1025,7 +1059,7 @@
           <div class="match-info">
             <div class="match-stage">${m.stage}${status === 'live' ? '<span class="live-tag">LIVE</span>' : ''}</div>
             ${renderTeamsRow(m.teams)}
-            <div class="match-venue">${m.venue}</div>
+            <div class="match-venue">${m.venue} &nbsp;${bcBadge}</div>
           </div>
           ${scoreDisplay ? `<div><div class="match-score ${status === 'live' ? 'live' : ''}">${scoreDisplay}</div>${minuteDisplay ? `<span class="minute-tag">${minuteDisplay}</span>` : ''}</div>` : ''}
           <div class="bell-btn ${isBelled ? 'active' : ''} ${canBell ? '' : 'disabled'}" data-id="${m.id}">
