@@ -5,12 +5,21 @@
 const { getStore } = require('@netlify/blobs');
 const { sendWebPush } = require('./webpush-lib');
 
+function getReminderStore(){
+  const siteID = process.env.BLOBS_SITE_ID;
+  const token = process.env.BLOBS_TOKEN;
+  if(siteID && token){
+    return getStore({ name: 'reminders', siteID, token });
+  }
+  return getStore('reminders');
+}
+
 const config = {
   schedule: '* * * * *', // every minute
 };
 
 const handler = async function () {
-  const store = getStore('reminders');
+  const store = getReminderStore();
   const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY;
   const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
   const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@example.com';

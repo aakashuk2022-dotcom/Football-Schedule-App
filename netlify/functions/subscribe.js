@@ -4,6 +4,16 @@
 
 const { getStore } = require('@netlify/blobs');
 
+function getReminderStore(){
+  const siteID = process.env.BLOBS_SITE_ID;
+  const token = process.env.BLOBS_TOKEN;
+  if(siteID && token){
+    return getStore({ name: 'reminders', siteID, token });
+  }
+  // Fallback to auto-injected config if available (works in some environments)
+  return getStore('reminders');
+}
+
 exports.handler = async function (event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -17,7 +27,7 @@ exports.handler = async function (event) {
   }
 
   try {
-    const store = getStore('reminders');
+    const store = getReminderStore();
     const data = JSON.parse(event.body || '{}');
 
     if (event.httpMethod === 'POST') {
